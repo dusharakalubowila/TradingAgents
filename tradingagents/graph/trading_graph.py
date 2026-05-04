@@ -199,25 +199,43 @@ class TradingAgentsGraph:
         """
         try:
             start = datetime.strptime(trade_date, "%Y-%m-%d")
-            end = start + timedelta(days=holding_days + 7)  # buffer for weekends/holidays
+            end = start + timedelta(days=holding_days + 7)
             end_str = end.strftime("%Y-%m-%d")
 
-            stock = yf.Ticker(ticker).history(start=trade_date, end=end_str)
-            spy = yf.Ticker("SPY").history(start=trade_date, end=end_str)
+            # Detect forex/crypto by ticker format — skip SPY alpha for non-stocks
+            is_forex = ticker.endswith("=X")
+            is_crypto = "-USD" in ticker or "-BTC" in ticker
 
-            if len(stock) < 2 or len(spy) < 2:
+            yf_ticker = ticker
+            # Forex yfinance tickers use =X suffix
+            if is_forex:
+                yf_ticker = ticker  # already in EURUSD=X format
+            # Crypto uses BTC-USD format
+            price_data = yf.Ticker(yf_ticker).history(start=trade_date, end=end_str)
+
+            if len(price_data) < 2:
                 return None, None, None
 
-            actual_days = min(holding_days, len(stock) - 1, len(spy) - 1)
+            actual_days = min(holding_days, len(price_data) - 1)
             raw = float(
-                (stock["Close"].iloc[actual_days] - stock["Close"].iloc[0])
-                / stock["Close"].iloc[0]
+                (price_data["Close"].iloc[actual_days] - price_data["Close"].iloc[0])
+                / price_data["Close"].iloc[0]
             )
-            spy_ret = float(
-                (spy["Close"].iloc[actual_days] - spy["Close"].iloc[0])
-                / spy["Close"].iloc[0]
-            )
-            alpha = raw - spy_ret
+
+            # Alpha vs SPY only makes sense for US equities
+            if is_forex or is_crypto:
+                alpha = 0.0   # no meaningful benchmark for forex/crypto
+            else:
+                spy = yf.Ticker("SPY").history(start=trade_date, end=end_str)
+                if len(spy) < 2:
+                    alpha = 0.0
+                else:
+                    spy_ret = float(
+                        (spy["Close"].iloc[actual_days] - spy["Close"].iloc[0])
+                        / spy["Close"].iloc[0]
+                    )
+                    alpha = raw - spy_ret
+
             return raw, alpha, actual_days
         except Exception as e:
             logger.warning(

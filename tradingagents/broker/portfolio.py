@@ -1,6 +1,6 @@
 """
-Persistent portfolio state — tracks the $100 balance, open trades, and P&L
-across runs by saving state to a JSON file.
+Persistent portfolio state — tracks $100 balance, open trades, and P&L.
+Saved to JSON so state survives between runs.
 """
 
 import json
@@ -8,7 +8,10 @@ import logging
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from .mt5_client import MT5Client
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +20,7 @@ logger = logging.getLogger(__name__)
 class TradeRecord:
     ticket: int
     symbol: str
-    action: str             # "BUY" or "SELL"
+    action: str
     volume: float
     open_price: float
     close_price: Optional[float]
@@ -26,7 +29,7 @@ class TradeRecord:
     profit: Optional[float]
     open_time: str
     close_time: Optional[str]
-    signal_rating: str      # Buy / Overweight / Hold / Underweight / Sell
+    signal_rating: str
     status: str             # "open" or "closed"
 
 
@@ -46,7 +49,7 @@ class PortfolioState:
 
 
 class Portfolio:
-    """Persistent portfolio tracker — load/save state to JSON."""
+    """Persistent portfolio tracker with MT5 position sync."""
 
     def __init__(self, state_path: str):
         self.state_path = Path(state_path)
@@ -72,21 +75,57 @@ class Portfolio:
             json.dump(asdict(self.state), f, indent=2)
 
     # ------------------------------------------------------------------
-    # Sync & mutations
+    # MT5 sync — fixes the "portfolio out of sync" bug
     # ------------------------------------------------------------------
 
     def sync_balance(self, mt5_balance: float):
-        """Pull live balance from MT5 account; reset daily P&L on new day."""
+        """Pull live balance from MT5; reset daily P&L on new day."""
         self.state.current_balance = mt5_balance
         if mt5_balance > self.state.peak_balance:
             self.state.peak_balance = mt5_balance
-
         today = date.today().isoformat()
         if self.state.daily_reset_date != today:
             self.state.daily_pnl = 0.0
             self.state.daily_reset_date = today
-
         self._save()
+
+    def sync_positions_from_mt5(self, mt5: "MT5Client", symbol: str = None):
+        """
+        Reconcile portfolio open_trades with actual MT5 positions.
+
+        Any trade in portfolio that no longer exists in MT5
+        (hit SL/TP while script was offline) is marked closed.
+        """
+        try:
+            live_positions = mt5.positions_get(symbol=symbol) if symbol else mt5.positions_get()
+            live_tickets = {p.ticket for p in live_positions}
+
+            closed_offline = []
+            for t in self.state.open_trades:
+                if t["ticket"] not in live_tickets:
+                    closed_offline.append(t)
+
+            for t in closed_offline:
+                logger.info(
+                    "Trade %d closed offline (SL/TP hit): %s %s",
+                    t["ticket"], t["action"], t["symbol"],
+                )
+                t["close_time"] = datetime.now().isoformat()
+                t["status"] = "closed"
+                # profit unknown — mark as None, will be reconciled later
+                t["profit"] = t.get("profit")
+                self.state.closed_trades.append(t)
+                self.state.open_trades.remove(t)
+
+            if closed_offline:
+                self._save()
+
+        except Exception as e:
+            logger.warning("MT5 position sync failed: %s", e)
+
+    # ------------------------------------------------------------------
+    # Trade recording
+    # ------------------------------------------------------------------
 
     def record_open_trade(self, trade: TradeRecord):
         self.state.open_trades.append(asdict(trade))
@@ -141,11 +180,10 @@ class Portfolio:
     def summary(self) -> str:
         s = self.state
         return (
-            f"Balance : ${s.current_balance:.2f}  (started: ${s.initial_balance:.2f})\n"
+            f"Balance  : ${s.current_balance:.2f}  (started: ${s.initial_balance:.2f})\n"
             f"Total P&L: ${s.total_profit:+.2f}   Daily P&L: ${s.daily_pnl:+.2f}\n"
             f"Drawdown : {self.drawdown_pct * 100:.1f}%\n"
             f"Win Rate : {self.win_rate * 100:.1f}%\n"
-            f"Trades   : {s.total_trades} total  "
-            f"({s.winning_trades}W / {s.losing_trades}L)\n"
+            f"Trades   : {s.total_trades} total  ({s.winning_trades}W / {s.losing_trades}L)\n"
             f"Open     : {len(s.open_trades)} position(s)"
         )
