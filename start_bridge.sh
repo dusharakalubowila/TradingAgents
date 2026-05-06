@@ -10,5 +10,5 @@ wine "C:/Program Files/MetaTrader 5/terminal64.exe" /portable >> "$LOG/mt5termin
 echo "MT5 PID: $!" >> "$LOG/mt5terminal.log"
 sleep 20
 
-# Start bridge using script to provide fake terminal (fixes Wine stdin issue)
-exec script -q -c 'wine "C:/Program Files/Python310/python.exe" -m mt5linux' /dev/null
+# Use wineconsole to provide proper Windows console handles (fixes stdin issue)
+exec wineconsole "C:/Program Files/Python310/python.exe" -m mt5linux
