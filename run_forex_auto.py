@@ -234,11 +234,13 @@ def _run_llm(symbol_yf, mt5_symbol, trade_date, args):
             "llm_provider":    args.provider,
             "deep_think_llm":  deep_model,
             "quick_think_llm": quick_model,
-            "checkpoint_enabled": True,
+            "checkpoint_enabled": False,
         })
         ta = TradingAgentsGraph(selected_analysts=["market", "news"],
                                 debug=False, config=config)
-        _, llm_signal = ta.propagate(symbol_yf, trade_date)
+        # Use MT5 symbol (e.g. EURUSD) not yfinance ticker (EURUSD=X) —
+        # the = sign fails the safe_ticker_component path validation
+        _, llm_signal = ta.propagate(mt5_symbol, trade_date)
         return llm_signal
     except Exception as exc:
         logger.error("LLM analysis failed: %s", exc)
