@@ -74,17 +74,21 @@ def is_weekend(now: datetime) -> bool:
     return now.weekday() >= 5
 
 
-def _mt5_connect(args):
+def _mt5_connect(args, retries=3, delay=15):
     from tradingagents.broker.mt5_client import MT5Client
-    mt5 = MT5Client(host=args.mt5_host, port=args.mt5_port)
-    if not mt5.initialize(
-        login=args.mt5_login,
-        password=args.mt5_password,
-        server=args.mt5_server,
-    ):
-        logger.error("MT5 connect failed: %s", mt5.last_error())
-        return None
-    return mt5
+    for attempt in range(1, retries + 1):
+        mt5 = MT5Client(host=args.mt5_host, port=args.mt5_port)
+        if mt5.initialize(
+            login=args.mt5_login,
+            password=args.mt5_password,
+            server=args.mt5_server,
+        ):
+            return mt5
+        logger.warning("MT5 connect attempt %d/%d failed: %s", attempt, retries, mt5.last_error())
+        if attempt < retries:
+            time.sleep(delay)
+    logger.error("MT5 connect failed after %d attempts.", retries)
+    return None
 
 
 def close_all_stock_positions(args):

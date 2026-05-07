@@ -173,7 +173,7 @@ def hard_close_london_breakout(args):
         logger.error("Hard exit error: %s", exc)
 
 
-def run_strategy_for_pair(symbol: str, args, use_llm: bool):
+def run_strategy_for_pair(symbol: str, args, use_llm: bool, skip_session_filter: bool = False):
     """Run the full strategy pipeline for one pair."""
     logger.info("--- Analysing %s ---", symbol)
 
@@ -183,11 +183,12 @@ def run_strategy_for_pair(symbol: str, args, use_llm: bool):
         from tradingagents.broker.news_calendar import NewsCalendar
         from tradingagents.broker.session_filter import is_tradeable
 
-        # Session check
-        allowed, reason = is_tradeable(symbol)
-        if not allowed:
-            logger.info("%s — session blocked: %s", symbol, reason)
-            return
+        # Session check — skipped for ICT jobs which have their own kill-zone filter
+        if not skip_session_filter:
+            allowed, reason = is_tradeable(symbol)
+            if not allowed:
+                logger.info("%s — session blocked: %s", symbol, reason)
+                return
 
         # News check
         cal = NewsCalendar()
@@ -338,8 +339,9 @@ def run_job(job: tuple, args):
         hard_close_london_breakout(args)
         return
 
+    ict_job = "ICT" in label
     for symbol in pairs:
-        run_strategy_for_pair(symbol, args, use_llm)
+        run_strategy_for_pair(symbol, args, use_llm, skip_session_filter=ict_job)
 
 
 def seconds_until(hour: int, minute: int, now: datetime) -> float:
