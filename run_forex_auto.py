@@ -181,14 +181,9 @@ def run_strategy_for_pair(symbol: str, args, use_llm: bool, skip_session_filter:
         from tradingagents.broker.forex_strategy import run_all_strategies
         from tradingagents.broker.symbol_mapper import to_yfinance_ticker
         from tradingagents.broker.news_calendar import NewsCalendar
-        from tradingagents.broker.session_filter import is_tradeable
 
-        # Session check — skipped for ICT jobs which have their own kill-zone filter
-        if not skip_session_filter:
-            allowed, reason = is_tradeable(symbol)
-            if not allowed:
-                logger.info("%s — session blocked: %s", symbol, reason)
-                return
+        # Session filter removed — each strategy has its own time window check built in
+        # (London Breakout: 07-09 UTC, ICT: kill zones, EMA: 07-11/13-16 UTC)
 
         # News check
         cal = NewsCalendar()
