@@ -71,8 +71,8 @@ SCHEDULE = [
     # ICT NY kill zone (12:00–15:00 UTC)
     (12, 5,  "ICT_NY_KZ",        ["EURUSD", "XAUUSD"],  True),
 
-    # EMA Hybrid — second window (13:00–16:00 UTC)
-    (13, 0,  "EMA_WINDOW_2",     ["EURUSD", "GBPUSD"],  True),
+    # EMA Hybrid — second window (13:00–16:00 UTC) — fire at 13:05 so hour=13 when strategy runs
+    (13, 5,  "EMA_WINDOW_2",     ["EURUSD", "GBPUSD"],  True),
 ]
 
 # ── Provider defaults ─────────────────────────────────────────────────────────
