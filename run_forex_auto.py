@@ -284,10 +284,17 @@ def _execute(tech_signal, mt5_symbol, args):
             max_open_positions     = args.max_positions,
         )
 
-        mt5 = MT5Client(host=args.mt5_host, port=args.mt5_port)
-        if not mt5.initialize(login=args.mt5_login, password=args.mt5_password,
-                              server=args.mt5_server):
-            logger.error("MT5 connection failed: %s", mt5.last_error())
+        mt5 = None
+        for attempt in range(1, 4):
+            _mt5 = MT5Client(host=args.mt5_host, port=args.mt5_port)
+            if _mt5.initialize(login=args.mt5_login, password=args.mt5_password,
+                               server=args.mt5_server):
+                mt5 = _mt5
+                break
+            logger.warning("MT5 connect attempt %d/3 failed: %s", attempt, _mt5.last_error())
+            time.sleep(15)
+        if mt5 is None:
+            logger.error("MT5 connection failed after 3 attempts.")
             return
 
         try:
