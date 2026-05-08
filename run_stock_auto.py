@@ -173,7 +173,7 @@ def analyse_and_trade(mt5_symbol: str, args):
 
         logger.info("%s — running 4-analyst LLM (3–8 min)…", mt5_symbol)
         ta = TradingAgentsGraph(
-            selected_analysts=["market", "news", "fundamentals", "social_media"],
+            selected_analysts=["market", "news", "fundamentals", "social"],
             debug=False,
             config=config,
         )

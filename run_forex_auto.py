@@ -56,14 +56,14 @@ logger = logging.getLogger("forex_auto")
 
 # Each job: (utc_hour, utc_minute, label, pairs, use_llm_gate)
 SCHEDULE = [
-    # ICT London kill zone (02:00–05:00 UTC)
-    (2,  0,  "ICT_LONDON_KZ",    ["EURUSD", "GBPUSD"], True),
+    # ICT London kill zone (02:00–05:00 UTC) — fire at 02:05 so hour=2 when strategy runs
+    (2,  5,  "ICT_LONDON_KZ",    ["EURUSD", "GBPUSD"], True),
 
-    # London Breakout entry window opens (07:00–09:00 UTC)
-    (7,  0,  "LONDON_BREAKOUT",  ["GBPUSD", "EURUSD"],  True),
+    # London Breakout entry window opens (07:00–09:00 UTC) — fire at 07:05 so hour=7
+    (7,  5,  "LONDON_BREAKOUT",  ["GBPUSD", "EURUSD"],  True),
 
-    # EMA Hybrid — first window (07:00–11:00 UTC)
-    (7,  30, "EMA_WINDOW_1",     ["EURUSD"],            True),
+    # EMA Hybrid — first window (07:00–11:00 UTC) — fire at 07:35 so hour=7
+    (7,  35, "EMA_WINDOW_1",     ["EURUSD"],            True),
 
     # HARD EXIT: close all London Breakout positions
     (12, 0,  "HARD_EXIT_LB",     [],                    False),
