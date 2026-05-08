@@ -184,6 +184,9 @@ def analyse_and_trade(mt5_symbol: str, args):
         logger.error("%s — LLM failed: %s", mt5_symbol, exc, exc_info=True)
         return
 
+    signal_map = {"overweight": "BUY", "underweight": "SELL"}
+    signal = signal_map.get(signal.lower(), signal)
+
     if signal.lower() not in {"buy", "sell"}:
         logger.info("%s — signal is '%s', skipping.", mt5_symbol, signal)
         return
