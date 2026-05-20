@@ -27,10 +27,12 @@ MAGIC = 20240101
 
 SIGNAL_TO_ACTION = {
     "Buy":        "BUY",
+    "BUY":        "BUY",
     "Overweight": "BUY",
     "Hold":       None,
     "Underweight":"SELL",
     "Sell":       "SELL",
+    "SELL":       "SELL",
 }
 
 # Order filling modes to try in order (Exness Standard/Cent prefer RETURN)

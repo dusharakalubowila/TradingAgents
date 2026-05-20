@@ -12,8 +12,8 @@ from .portfolio import Portfolio
 logger = logging.getLogger(__name__)
 
 # Signals that clearly point in one direction
-BUY_SIGNALS = {"Buy", "Overweight"}
-SELL_SIGNALS = {"Sell", "Underweight"}
+BUY_SIGNALS = {"Buy", "BUY", "Overweight"}
+SELL_SIGNALS = {"Sell", "SELL", "Underweight"}
 
 
 @dataclass
